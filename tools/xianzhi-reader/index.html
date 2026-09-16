@@ -1,0 +1,2161 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>投研 Markdown 阅读器</title>
+    <link rel="stylesheet" href="/vendor/github-markdown.css">
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7fb;
+        --panel: #ffffff;
+        --line: #e2e7f0;
+        --line-soft: #edf0f5;
+        --text: #1c2638;
+        --muted: #64748b;
+        --soft: #94a3b8;
+        --accent: #5956d9;
+        --accent-soft: #efefff;
+        --code-bg: #f1f3f9;
+        --table-head: #f5f5ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+        background: #fff;
+      }
+
+      body {
+        margin: 0;
+        color: var(--text);
+        background: var(--bg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .app {
+        position: relative;
+        display: grid;
+        grid-template-columns: 360px minmax(0, 1fr);
+        width: 100vw;
+        height: 100dvh;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      .sidebar {
+        display: flex;
+        min-width: 0;
+        min-height: 0;
+        flex-direction: column;
+        overflow: hidden;
+        border-right: 1px solid var(--line);
+        background: linear-gradient(180deg, #fbfbff 0%, #f7f8fc 100%);
+        box-shadow: 8px 0 26px rgba(35, 42, 80, 0.04);
+      }
+
+      .sidebar-scrim {
+        display: none;
+      }
+
+      .sidebar-header {
+        padding: 22px 20px 16px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .brand {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .brand h1 {
+        margin: 0;
+        color: #292968;
+        font-size: 21px;
+        font-weight: 700;
+        letter-spacing: 0;
+      }
+
+      .file-count {
+        color: var(--muted);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .search {
+        width: 100%;
+        height: 38px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        outline: none;
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 5px 16px rgba(40, 48, 91, 0.05);
+      }
+
+      .search:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(89, 86, 217, 0.14);
+      }
+
+      .module-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+      }
+
+      .module-tab {
+        height: 34px;
+        flex: 0 0 auto;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        color: var(--text);
+        background: #fff;
+        cursor: pointer;
+      }
+
+      .module-tab:hover {
+        background: #f1f2ff;
+      }
+
+      .module-tab.active {
+        border-color: var(--accent);
+        color: #fff;
+        background: linear-gradient(135deg, #6965e6, #4f4bc3);
+        box-shadow: 0 5px 12px rgba(89, 86, 217, 0.22);
+        font-weight: 700;
+      }
+
+      .category-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .category-tab {
+        min-width: 0;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        color: var(--text);
+        background: #fff;
+        cursor: pointer;
+      }
+
+      .category-tab:hover {
+        background: #f1f2ff;
+      }
+
+      .category-tab.active {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-soft);
+        box-shadow: inset 0 0 0 1px rgba(89, 86, 217, 0.08);
+        font-weight: 700;
+      }
+
+      .list {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 8px 0 18px;
+      }
+
+      .category-section {
+        margin-top: 6px;
+      }
+
+      .category-heading {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 18px 7px;
+        border-bottom: 1px solid var(--line-soft);
+        color: var(--muted);
+        background: rgba(248, 249, 255, 0.96);
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .category-heading span:last-child {
+        flex: 0 0 auto;
+        color: var(--soft);
+        font-weight: 500;
+      }
+
+      .file-button {
+        width: 100%;
+        width: calc(100% - 16px);
+        margin: 3px 8px;
+        padding: 12px 14px;
+        border: 0;
+        border-left: 3px solid transparent;
+        text-align: left;
+        color: var(--text);
+        border-radius: 10px;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .file-button:hover {
+        background: #f0f1ff;
+      }
+
+      .file-button.active {
+        border-left-color: var(--accent);
+        background: var(--accent-soft);
+        box-shadow: 0 5px 14px rgba(89, 86, 217, 0.1);
+      }
+
+      .file-title {
+        display: -webkit-box;
+        overflow: hidden;
+        margin-bottom: 5px;
+        font-size: 14px;
+        font-weight: 650;
+        line-height: 1.35;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+
+      .file-meta {
+        display: block;
+        min-width: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .file-name {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .empty {
+        padding: 30px 18px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .content-shell {
+        display: flex;
+        min-width: 0;
+        min-height: 0;
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      .article-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        min-height: 76px;
+        padding: 16px 32px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 4px 16px rgba(35, 42, 80, 0.04);
+      }
+
+      .article-title {
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .article-title strong {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #252b55;
+        font-size: 19px;
+      }
+
+      .article-title span {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .status {
+        color: var(--muted);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .mobile-menu-button {
+        display: none;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--text);
+        background: #fff;
+        cursor: pointer;
+      }
+
+      .mobile-menu-button:hover {
+        background: #f7f9fc;
+      }
+
+      .mobile-menu-button span,
+      .mobile-menu-button::before,
+      .mobile-menu-button::after {
+        display: block;
+        width: 18px;
+        height: 2px;
+        border-radius: 999px;
+        background: currentColor;
+      }
+
+      .mobile-menu-button::before,
+      .mobile-menu-button::after {
+        content: "";
+        position: absolute;
+      }
+
+      .mobile-menu-button {
+        position: relative;
+      }
+
+      .mobile-menu-button::before {
+        transform: translateY(-6px);
+      }
+
+      .mobile-menu-button::after {
+        transform: translateY(6px);
+      }
+
+      .article-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 22px 24px;
+        background: radial-gradient(circle at 20% 0%, #fbfbff 0, #f5f7fb 45%, #f3f6fb 100%);
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .article {
+        width: 100%;
+        max-width: none;
+        min-height: 100%;
+        margin: 0;
+        padding: 40px 52px;
+        border: 1px solid rgba(226, 231, 240, 0.9);
+        border-radius: 16px;
+        background: var(--panel);
+        box-shadow: 0 15px 38px rgba(35, 42, 80, 0.07);
+      }
+
+      .article.csv-article {
+        width: 100%;
+        max-width: none;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .article.html-article {
+        padding: 0;
+        overflow: hidden;
+        background: #fff;
+      }
+
+      .article h1,
+      .article h2,
+      .article h3,
+      .article h4 {
+        margin: 1.45em 0 0.65em;
+        line-height: 1.35;
+        letter-spacing: 0;
+      }
+
+      .article h1:first-child,
+      .article h2:first-child,
+      .article h3:first-child {
+        margin-top: 0;
+      }
+
+      .article h1 {
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--line);
+        font-size: 30px;
+      }
+
+      .article h2 {
+        scroll-margin-top: 22px;
+        padding: 12px 14px;
+        border: 1px solid #b9c9df;
+        border-left: 4px solid var(--accent);
+        border-radius: 6px;
+        color: #123761;
+        background: #f0f6ff;
+        font-size: 23px;
+      }
+
+      .article h3 {
+        font-size: 18px;
+      }
+
+      .article h4 {
+        font-size: 16px;
+      }
+
+      .article p,
+      .article li {
+        font-size: 16px;
+        line-height: 1.85;
+      }
+
+      .article p {
+        margin: 0.75em 0;
+      }
+
+      .article ul,
+      .article ol {
+        padding-left: 1.45em;
+        margin: 0.65em 0 1em;
+      }
+
+      .article strong {
+        font-weight: 750;
+      }
+
+      .article a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .article a:hover {
+        text-decoration: underline;
+      }
+
+      .article img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 6px;
+      }
+
+      .img-wrap {
+        margin: 18px 0;
+        text-align: center;
+      }
+
+      .img-wrap img {
+        max-width: 100%;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      }
+
+      .article blockquote {
+        margin: 1em 0;
+        padding: 8px 16px;
+        border-left: 4px solid var(--accent);
+        color: #39465c;
+        background: #f7faff;
+      }
+
+      .article code {
+        padding: 2px 5px;
+        border-radius: 4px;
+        background: var(--code-bg);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        font-size: 0.9em;
+      }
+
+      .article pre {
+        overflow: auto;
+        padding: 16px;
+        border-radius: 6px;
+        background: #172033;
+        color: #f7f8fb;
+      }
+
+      .article pre code {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+      }
+
+      .table-wrap {
+        overflow: auto;
+        margin: 18px 0;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+      }
+
+      .csv-view {
+        width: min(100%, 1280px);
+        margin: 0 auto 50px;
+      }
+
+      .csv-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .csv-toolbar button {
+        height: 32px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--text);
+        background: var(--panel);
+        cursor: pointer;
+      }
+
+      .csv-toolbar button:hover {
+        background: #f7f9fc;
+      }
+
+      .csv-table-wrap {
+        max-height: calc(100dvh - 190px);
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: 0 12px 30px rgba(28, 39, 58, 0.06);
+      }
+
+      .csv-table {
+        min-width: 1900px;
+        width: max-content;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 13px;
+      }
+
+      .csv-table th,
+      .csv-table td {
+        max-width: 280px;
+        padding: 9px 10px;
+        border-right: 1px solid var(--line-soft);
+        border-bottom: 1px solid var(--line-soft);
+        text-align: left;
+        line-height: 1.55;
+        vertical-align: top;
+      }
+
+      .csv-table th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        min-width: 110px;
+        background: var(--table-head);
+        font-weight: 700;
+      }
+
+      .csv-table .filter-row th {
+        top: 39px;
+        z-index: 1;
+        padding: 6px 8px;
+      }
+
+      .csv-sort {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        color: var(--text);
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .csv-sort span:first-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .csv-sort-indicator {
+        flex: 0 0 auto;
+        color: var(--soft);
+        font-size: 11px;
+      }
+
+      .csv-filter {
+        width: 100%;
+        height: 28px;
+        padding: 0 8px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        outline: none;
+        color: var(--text);
+        background: #fff;
+        font-size: 12px;
+      }
+
+      .csv-filter:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(27, 102, 210, 0.1);
+      }
+
+      .csv-cell {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 4;
+      }
+
+      .csv-col-date,
+      .csv-col-status,
+      .csv-col-next-review {
+        width: 120px;
+        min-width: 120px;
+      }
+
+      .csv-col-topic,
+      .csv-col-target,
+      .csv-col-direction {
+        width: 170px;
+        min-width: 170px;
+      }
+
+      .csv-col-source,
+      .csv-col-catalyst,
+      .csv-col-evidence,
+      .csv-col-position,
+      .csv-col-strategy,
+      .csv-col-risk,
+      .csv-col-note {
+        width: 260px;
+        min-width: 260px;
+      }
+
+      mark {
+        padding: 0 2px;
+        border-radius: 3px;
+        background: #fff1a8;
+      }
+
+      .article.markdown-body {
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        font-size: 16px;
+        line-height: 1.75;
+      }
+
+      .article.markdown-body h1,
+      .article.markdown-body h2,
+      .article.markdown-body h3,
+      .article.markdown-body h4 {
+        letter-spacing: 0;
+      }
+
+      .article.markdown-body h1 {
+        padding-bottom: 0.3em;
+        border-bottom: 1px solid var(--line);
+        font-size: 2em;
+      }
+
+      .article.markdown-body h2 {
+        padding: 0 0 0.3em;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
+        color: inherit;
+        background: transparent;
+        font-size: 1.5em;
+      }
+
+      .article.markdown-body h3 {
+        font-size: 1.25em;
+      }
+
+      .article.markdown-body h4 {
+        font-size: 1em;
+      }
+
+      .article.markdown-body p,
+      .article.markdown-body li {
+        font-size: inherit;
+        line-height: inherit;
+      }
+
+      .article.markdown-body ul,
+      .article.markdown-body ol {
+        padding-left: 2em;
+      }
+
+      .article.markdown-body blockquote {
+        padding: 0 1em;
+        border-left: 0.25em solid #d0d7de;
+        color: #57606a;
+        background: transparent;
+      }
+
+      .article.markdown-body hr {
+        height: 1px;
+        margin: 24px 0;
+        background-color: var(--line);
+        border: 0;
+      }
+
+      .article.markdown-body .image-link {
+        display: inline-block;
+        max-width: 100%;
+      }
+
+      .article.markdown-body img {
+        max-width: min(100%, 560px);
+        max-height: 72vh;
+        object-fit: contain;
+        cursor: zoom-in;
+      }
+
+      .article.markdown-body .table-scroll {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+      }
+
+      .article.markdown-body .table-scroll table {
+        width: max-content;
+        min-width: 100%;
+        table-layout: auto;
+      }
+
+      .article.markdown-body .table-scroll table th,
+      .article.markdown-body .table-scroll table td {
+        width: max-content;
+        min-width: 8em;
+        max-width: 32rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        vertical-align: top;
+      }
+
+      .article.markdown-body pre {
+        background: #f6f8fa;
+        color: #24292f;
+      }
+      .html-preview {
+        display: block;
+        width: 100%;
+        min-height: calc(100dvh - 72px);
+        border: 0;
+        border-radius: 0;
+        background: #fff;
+      }
+
+      .article.markdown-body table th {
+        color: #4d4c91;
+        background: var(--table-head);
+      }
+
+      .article.markdown-body table tr:nth-child(even) {
+        background: #fbfbff;
+      }
+
+      .article.markdown-body a {
+        color: #4e4ac4;
+      }
+
+      .article.markdown-body a:hover {
+        color: #37349a;
+      }
+
+      .image-viewer {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        background: rgba(15, 23, 42, 0.88);
+        overscroll-behavior: contain;
+        touch-action: none;
+      }
+
+      .image-viewer[hidden] {
+        display: none;
+      }
+
+      .image-viewer-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px;
+        min-width: 0;
+      }
+
+      .image-viewer-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        height: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        color: #fff;
+        background: rgba(15, 23, 42, 0.72);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .image-viewer-button.is-wide {
+        padding: 0 12px;
+      }
+
+      .image-viewer-button:hover {
+        background: rgba(30, 41, 59, 0.86);
+      }
+
+      .image-viewer-stage {
+        position: relative;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        cursor: grab;
+        overscroll-behavior: contain;
+        touch-action: none;
+      }
+
+      .image-viewer-stage.dragging {
+        cursor: grabbing;
+      }
+
+      .image-viewer-image {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        max-width: none;
+        max-height: none;
+        user-select: none;
+        -webkit-user-drag: none;
+        transform-origin: center center;
+        touch-action: none;
+        will-change: transform;
+      }
+
+      @media (max-width: 860px) {
+        .app {
+          grid-template-columns: 1fr;
+          height: 100dvh;
+        }
+
+        .sidebar {
+          position: fixed;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          z-index: 20;
+          width: min(86vw, 360px);
+          max-width: 360px;
+          border-right: 1px solid var(--line);
+          border-bottom: 0;
+          box-shadow: 14px 0 30px rgba(15, 23, 42, 0.18);
+          transform: translateX(-102%);
+          transition: transform 180ms ease;
+          will-change: transform;
+        }
+
+        .app.sidebar-open .sidebar {
+          transform: translateX(0);
+        }
+
+        .sidebar-scrim {
+          position: fixed;
+          inset: 0;
+          z-index: 15;
+          display: block;
+          border: 0;
+          padding: 0;
+          background: rgba(15, 23, 42, 0.36);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 180ms ease;
+        }
+
+        .app.sidebar-open .sidebar-scrim {
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .sidebar-header {
+          padding: 16px 16px 12px;
+        }
+
+        .category-heading {
+          padding-right: 16px;
+          padding-left: 16px;
+        }
+
+        .file-button {
+          padding-right: 16px;
+          padding-left: 16px;
+        }
+
+        .mobile-menu-button {
+          display: flex;
+        }
+
+        .content-shell {
+          height: 100dvh;
+          min-height: 0;
+          border-right: 0;
+        }
+
+        .article-header {
+          display: grid;
+          grid-template-columns: 42px minmax(0, 1fr);
+          align-items: center;
+          gap: 8px 12px;
+          min-height: auto;
+          padding: 10px 14px;
+        }
+
+        .article-title strong {
+          font-size: 16px;
+        }
+
+        .article-title span {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .status {
+          grid-column: 2;
+          white-space: normal;
+        }
+
+        .article-scroll {
+          padding: 16px;
+        }
+
+        .article {
+          padding: 24px 18px;
+        }
+
+        .article h1 {
+          font-size: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="关闭文件列表"></button>
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="brand">
+            <h1>投研复盘</h1>
+            <span class="file-count" id="fileCount">加载中</span>
+          </div>
+          <div class="module-tabs" id="moduleTabs" role="tablist" aria-label="选择内容模块"></div>
+          <input class="search" id="searchInput" type="search" placeholder="搜索标题、文件名或当前正文">
+          <div class="category-tabs" id="categoryTabs"></div>
+        </div>
+        <div class="list" id="fileList">
+          <div class="empty">正在读取 Markdown 文件...</div>
+        </div>
+      </aside>
+      <section class="content-shell">
+        <header class="article-header">
+          <button class="mobile-menu-button" id="mobileMenuButton" type="button" aria-label="打开文件列表" aria-controls="fileList" aria-expanded="false">
+            <span></span>
+          </button>
+          <div class="article-title">
+            <strong id="currentTitle">请选择一篇复盘</strong>
+            <span id="currentMeta">左侧按时间倒序排列</span>
+          </div>
+          <div class="status" id="status">未加载</div>
+        </header>
+        <div class="article-scroll" id="articleScroll">
+          <article class="article markdown-body" id="article">
+            <p>正在准备阅读器...</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div class="image-viewer" id="imageViewer" hidden>
+      <div class="image-viewer-toolbar">
+        <button class="image-viewer-button" id="imageViewerZoomOut" type="button" aria-label="缩小">-</button>
+        <button class="image-viewer-button is-wide" id="imageViewerFit" type="button" aria-label="适应屏幕">适应</button>
+        <button class="image-viewer-button" id="imageViewerActual" type="button" aria-label="原始尺寸">1:1</button>
+        <button class="image-viewer-button" id="imageViewerZoomIn" type="button" aria-label="放大">+</button>
+        <button class="image-viewer-button" id="imageViewerClose" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="image-viewer-stage" id="imageViewerStage">
+        <img class="image-viewer-image" id="imageViewerImage" alt="" draggable="false">
+      </div>
+    </div>
+
+    <script src="/vendor/markdown-it.min.js"></script>
+    <script>
+      const state = {
+        files: [],
+        modules: [],
+        moduleIndexes: new Map(),
+        moduleIndexRequests: new Map(),
+        categories: [],
+        activeModule: "",
+        activeCategory: "all",
+        activePath: "",
+        activeMarkdown: "",
+        activeContent: "",
+        activeType: "",
+        csv: null,
+        csvFilters: {},
+        csvSort: { column: null, direction: "asc" },
+        query: "",
+      };
+
+      const elements = {
+        app: document.querySelector(".app"),
+        mobileMenuButton: document.getElementById("mobileMenuButton"),
+        sidebarScrim: document.getElementById("sidebarScrim"),
+        fileCount: document.getElementById("fileCount"),
+        moduleTabs: document.getElementById("moduleTabs"),
+        fileList: document.getElementById("fileList"),
+        categoryTabs: document.getElementById("categoryTabs"),
+        searchInput: document.getElementById("searchInput"),
+        currentTitle: document.getElementById("currentTitle"),
+        currentMeta: document.getElementById("currentMeta"),
+        status: document.getElementById("status"),
+        articleScroll: document.getElementById("articleScroll"),
+        article: document.getElementById("article"),
+        imageViewer: document.getElementById("imageViewer"),
+        imageViewerStage: document.getElementById("imageViewerStage"),
+        imageViewerImage: document.getElementById("imageViewerImage"),
+        imageViewerZoomOut: document.getElementById("imageViewerZoomOut"),
+        imageViewerFit: document.getElementById("imageViewerFit"),
+        imageViewerActual: document.getElementById("imageViewerActual"),
+        imageViewerZoomIn: document.getElementById("imageViewerZoomIn"),
+        imageViewerClose: document.getElementById("imageViewerClose"),
+      };
+
+      const imageViewerState = {
+        scale: 1,
+        fitScale: 1,
+        x: 0,
+        y: 0,
+        isDragging: false,
+        dragStartX: 0,
+        dragStartY: 0,
+        originX: 0,
+        originY: 0,
+        touchMode: null,
+        touchStartDistance: 0,
+        touchStartScale: 1,
+        touchStartCenterX: 0,
+        touchStartCenterY: 0,
+        touchMoved: false,
+        touchStartTarget: null,
+        suppressNextClick: false,
+      };
+
+      const imagePreloadState = {
+        articleToken: 0,
+        originals: new Map(),
+      };
+
+      function setSidebarOpen(isOpen) {
+        elements.app.classList.toggle("sidebar-open", isOpen);
+        elements.mobileMenuButton.setAttribute("aria-expanded", String(isOpen));
+      }
+
+      function isMobileLayout() {
+        return window.matchMedia("(max-width: 860px)").matches;
+      }
+
+      function closeSidebarOnMobile() {
+        if (isMobileLayout()) {
+          setSidebarOpen(false);
+        }
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function applyImageViewerTransform() {
+        const { scale, x, y } = imageViewerState;
+        elements.imageViewerImage.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) scale(${scale})`;
+      }
+
+      function setImageViewerScale(nextScale) {
+        const minScale = Math.min(0.25, imageViewerState.fitScale);
+        imageViewerState.scale = clamp(nextScale, minScale, 8);
+        applyImageViewerTransform();
+      }
+
+      function getTouchCenter(touches) {
+        let x = 0;
+        let y = 0;
+        for (let index = 0; index < touches.length; index += 1) {
+          const touch = touches[index];
+          x += touch.clientX;
+          y += touch.clientY;
+        }
+        return {
+          x: x / touches.length,
+          y: y / touches.length,
+        };
+      }
+
+      function getTouchDistance(touches) {
+        if (touches.length < 2) {
+          return 0;
+        }
+        const first = touches[0];
+        const second = touches[1];
+        return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+      }
+
+      function stopImageViewerDrag() {
+        imageViewerState.isDragging = false;
+        imageViewerState.touchMode = null;
+        imageViewerState.touchStartDistance = 0;
+        imageViewerState.touchStartTarget = null;
+        elements.imageViewerStage.classList.remove("dragging");
+      }
+
+      function getImageViewerFitScale() {
+        const image = elements.imageViewerImage;
+        const stage = elements.imageViewerStage;
+        if (!image.naturalWidth || !image.naturalHeight || !stage.clientWidth || !stage.clientHeight) {
+          return 1;
+        }
+        const widthScale = (stage.clientWidth * 0.94) / image.naturalWidth;
+        const heightScale = (stage.clientHeight * 0.94) / image.naturalHeight;
+        return Math.min(widthScale, heightScale, 1);
+      }
+
+      function resetImageViewerTransform(scale = imageViewerState.fitScale) {
+        imageViewerState.scale = scale;
+        imageViewerState.x = 0;
+        imageViewerState.y = 0;
+        applyImageViewerTransform();
+      }
+
+      function fitImageViewerToScreen() {
+        imageViewerState.fitScale = getImageViewerFitScale();
+        resetImageViewerTransform(imageViewerState.fitScale);
+      }
+
+      function showImageViewerActualSize() {
+        resetImageViewerTransform(1);
+      }
+
+      function resetImagePreloads() {
+        imagePreloadState.articleToken += 1;
+        for (const entry of imagePreloadState.originals.values()) {
+          entry.controller?.abort();
+          if (entry.objectUrl) {
+            URL.revokeObjectURL(entry.objectUrl);
+          }
+        }
+        imagePreloadState.originals.clear();
+      }
+
+      function waitForImage(image) {
+        if (image.complete) {
+          return Promise.resolve();
+        }
+        return new Promise((resolve) => {
+          image.addEventListener("load", resolve, { once: true });
+          image.addEventListener("error", resolve, { once: true });
+        });
+      }
+
+      function preloadOriginalImage(url, articleToken) {
+        const cached = imagePreloadState.originals.get(url);
+        if (cached) {
+          return cached.promise;
+        }
+
+        const controller = new AbortController();
+        const entry = { controller, objectUrl: "", promise: null };
+        entry.promise = fetch(url, { signal: controller.signal })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`原图读取失败: ${response.status}`);
+            }
+            return response.blob();
+          })
+          .then((blob) => {
+            const objectUrl = URL.createObjectURL(blob);
+            if (articleToken !== imagePreloadState.articleToken) {
+              URL.revokeObjectURL(objectUrl);
+              return "";
+            }
+            entry.objectUrl = objectUrl;
+            return objectUrl;
+          })
+          .catch((error) => {
+            if (error.name !== "AbortError") {
+              console.warn("原图预取失败", error);
+            }
+            return "";
+          });
+        imagePreloadState.originals.set(url, entry);
+        return entry.promise;
+      }
+
+      async function preloadOriginalImages(urls, articleToken) {
+        const queue = [...new Set(urls)];
+        const workerCount = Math.min(2, queue.length);
+        const workers = Array.from({ length: workerCount }, async () => {
+          while (queue.length && articleToken === imagePreloadState.articleToken) {
+            const url = queue.shift();
+            await preloadOriginalImage(url, articleToken);
+          }
+        });
+        await Promise.all(workers);
+      }
+
+      function loadArticleImages() {
+        const articleToken = imagePreloadState.articleToken;
+        const imageLinks = [...elements.article.querySelectorAll("a.image-link")];
+        const previews = imageLinks.map((link) => link.querySelector("img")).filter(Boolean);
+        const originalUrls = imageLinks.map((link) => link.href);
+
+        Promise.all(previews.map(waitForImage)).then(() => {
+          if (articleToken === imagePreloadState.articleToken) {
+            void preloadOriginalImages(originalUrls, articleToken);
+          }
+        });
+      }
+
+      function openImageViewer(originalUrl, previewUrl, alt = "") {
+        elements.imageViewerImage.alt = alt;
+        elements.imageViewer.hidden = false;
+        imageViewerState.fitScale = 1;
+        resetImageViewerTransform(1);
+        elements.imageViewerImage.onload = fitImageViewerToScreen;
+        const image = elements.imageViewerImage;
+        const viewerToken = Symbol("image-viewer");
+        imageViewerState.viewerToken = viewerToken;
+        const cached = imagePreloadState.originals.get(originalUrl);
+        if (cached?.objectUrl) {
+          image.src = cached.objectUrl;
+        } else {
+          image.src = previewUrl;
+          preloadOriginalImage(originalUrl, imagePreloadState.articleToken).then((objectUrl) => {
+            if (objectUrl && imageViewerState.viewerToken === viewerToken) {
+              image.src = objectUrl;
+            }
+          });
+        }
+        if (elements.imageViewerImage.complete) {
+          fitImageViewerToScreen();
+        }
+      }
+
+      function closeImageViewer() {
+        elements.imageViewer.hidden = true;
+        elements.imageViewerImage.onload = null;
+        elements.imageViewerImage.removeAttribute("src");
+        imageViewerState.viewerToken = null;
+        stopImageViewerDrag();
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function escapeRegExp(value) {
+        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+
+      function imageUrl(mdPath, variant = "") {
+        const rawPath = String(mdPath || "").trim();
+        const cleanPath = rawPath.replace(/^<|>$/g, "");
+        const params = new URLSearchParams({ path: cleanPath });
+        if (state.activePath) {
+          params.set("from", state.activePath);
+        }
+        if (variant) {
+          params.set("variant", variant);
+        }
+        return `/api/image?${params.toString()}`;
+      }
+
+      const markdownRenderer = window.markdownit({
+        html: false,
+        linkify: true,
+        typographer: false,
+        breaks: false,
+      });
+
+      const defaultImageRenderer = markdownRenderer.renderer.rules.image
+        || ((tokens, index, options, env, self) => self.renderToken(tokens, index, options));
+      markdownRenderer.renderer.rules.image = (tokens, index, options, env, self) => {
+        const token = tokens[index];
+        const src = token.attrGet("src");
+        const previewUrl = imageUrl(src, "thumbnail");
+        const originalUrl = imageUrl(src);
+        token.attrSet("src", previewUrl);
+        return `<a class="image-link" href="${escapeHtml(originalUrl)}" target="_blank" rel="noreferrer">`
+          + defaultImageRenderer(tokens, index, options, env, self)
+          + "</a>";
+      };
+
+      markdownRenderer.renderer.rules.table_open = (tokens, index, options, env, self) => (
+        `<div class="table-scroll">${self.renderToken(tokens, index, options)}`
+      );
+
+      markdownRenderer.renderer.rules.table_close = (tokens, index, options, env, self) => (
+        `${self.renderToken(tokens, index, options)}</div>`
+      );
+
+      markdownRenderer.renderer.rules.link_open = (tokens, index, options, env, self) => {
+        const token = tokens[index];
+        const href = token.attrGet("href") || "";
+        if (href.startsWith("#")) {
+          return self.renderToken(tokens, index, options);
+        }
+        if (href.startsWith("http://") || href.startsWith("https://")) {
+          token.attrSet("target", "_blank");
+          token.attrSet("rel", "noreferrer");
+        } else {
+          token.attrSet("href", "#");
+        }
+        return self.renderToken(tokens, index, options);
+      };
+
+      markdownRenderer.renderer.rules.heading_open = (tokens, index, options, env, self) => {
+        const inlineToken = tokens[index + 1];
+        const baseId = headingId(inlineToken?.content || "section");
+        const usedIds = env.headingIds || new Map();
+        const count = usedIds.get(baseId) || 0;
+        usedIds.set(baseId, count + 1);
+        env.headingIds = usedIds;
+        tokenSetId(tokens[index], count ? `${baseId}-${count + 1}` : baseId);
+        return self.renderToken(tokens, index, options);
+      };
+
+      function tokenSetId(token, id) {
+        token.attrSet("id", id);
+      }
+
+      function normalizeText(value) {
+        return String(value || "").toLowerCase();
+      }
+
+      function highlight(html, query) {
+        const trimmed = query.trim();
+        if (!trimmed) {
+          return html;
+        }
+        const pattern = new RegExp(`(${escapeRegExp(escapeHtml(trimmed))})`, "gi");
+        return html.replace(pattern, "<mark>$1</mark>");
+      }
+
+      function headingId(text) {
+        return String(text || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}\s._-]+/gu, "")
+          .replace(/\s+/g, "-") || "section";
+      }
+
+      function renderMarkdown(markdown, query = "") {
+        const html = markdownRenderer.render(markdown || "", { headingIds: new Map() });
+        return highlight(html, query);
+      }
+
+      function parseCsv(text) {
+        const rows = [];
+        let row = [];
+        let cell = "";
+        let inQuotes = false;
+
+        for (let index = 0; index < text.length; index += 1) {
+          const char = text[index];
+          const next = text[index + 1];
+
+          if (char === '"') {
+            if (inQuotes && next === '"') {
+              cell += '"';
+              index += 1;
+            } else {
+              inQuotes = !inQuotes;
+            }
+            continue;
+          }
+
+          if (char === "," && !inQuotes) {
+            row.push(cell);
+            cell = "";
+            continue;
+          }
+
+          if ((char === "\n" || char === "\r") && !inQuotes) {
+            if (char === "\r" && next === "\n") {
+              index += 1;
+            }
+            row.push(cell);
+            if (row.some((value) => value !== "")) {
+              rows.push(row);
+            }
+            row = [];
+            cell = "";
+            continue;
+          }
+
+          cell += char;
+        }
+
+        row.push(cell);
+        if (row.some((value) => value !== "")) {
+          rows.push(row);
+        }
+
+        const headers = rows[0] || [];
+        const dataRows = rows.slice(1).map((values, index) => ({
+          index,
+          values: headers.map((_, columnIndex) => values[columnIndex] || ""),
+        }));
+
+        return { headers, rows: dataRows };
+      }
+
+      function columnClass(header) {
+        const map = {
+          日期: "csv-col-date",
+          主题: "csv-col-topic",
+          标的: "csv-col-target",
+          方向: "csv-col-direction",
+          原文定位: "csv-col-source",
+          关键催化: "csv-col-catalyst",
+          需验证证据: "csv-col-evidence",
+          当前位置判断: "csv-col-position",
+          策略标签: "csv-col-strategy",
+          风险点: "csv-col-risk",
+          状态: "csv-col-status",
+          下次复盘日期: "csv-col-next-review",
+          备注: "csv-col-note",
+        };
+        return map[header] || "";
+      }
+
+      function compareCellValues(a, b) {
+        const left = String(a || "").trim();
+        const right = String(b || "").trim();
+        const leftTime = /^\d{4}-\d{2}-\d{2}$/.test(left) ? new Date(`${left}T00:00:00`).getTime() : Number.NaN;
+        const rightTime = /^\d{4}-\d{2}-\d{2}$/.test(right) ? new Date(`${right}T00:00:00`).getTime() : Number.NaN;
+
+        if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime)) {
+          return leftTime - rightTime;
+        }
+
+        const leftNumber = Number(left);
+        const rightNumber = Number(right);
+        if (left !== "" && right !== "" && !Number.isNaN(leftNumber) && !Number.isNaN(rightNumber)) {
+          return leftNumber - rightNumber;
+        }
+
+        return left.localeCompare(right, "zh-Hans-CN", { numeric: true });
+      }
+
+      function getFilteredCsvRows() {
+        if (!state.csv) {
+          return [];
+        }
+
+        const query = normalizeText(state.query.trim());
+        const filters = state.csvFilters;
+        let rows = state.csv.rows.filter((row) => {
+          const rowText = normalizeText(row.values.join(" "));
+          if (query && !rowText.includes(query)) {
+            return false;
+          }
+
+          return state.csv.headers.every((_, columnIndex) => {
+            const filter = normalizeText(filters[columnIndex] || "");
+            return !filter || normalizeText(row.values[columnIndex]).includes(filter);
+          });
+        });
+
+        if (state.csvSort.column !== null) {
+          const columnIndex = state.csvSort.column;
+          const direction = state.csvSort.direction === "desc" ? -1 : 1;
+          rows = [...rows].sort((a, b) => {
+            const compared = compareCellValues(a.values[columnIndex], b.values[columnIndex]);
+            return compared === 0 ? a.index - b.index : compared * direction;
+          });
+        }
+
+        return rows;
+      }
+
+      function activeModule() {
+        return state.modules.find((module) => module.id === state.activeModule) || state.modules[0] || null;
+      }
+
+      function renderModuleTabs() {
+        elements.moduleTabs.innerHTML = state.modules.map((module) => `
+          <button
+            class="module-tab${module.id === state.activeModule ? " active" : ""}"
+            type="button"
+            role="tab"
+            aria-selected="${module.id === state.activeModule ? "true" : "false"}"
+            data-module="${escapeHtml(module.id)}"
+          >
+            ${escapeHtml(module.name)}
+          </button>
+        `).join("");
+      }
+
+      function renderCsv() {
+        if (!state.csv) {
+          elements.article.innerHTML = '<p>没有可展示的 CSV 数据。</p>';
+          return;
+        }
+
+        const rows = getFilteredCsvRows();
+        const headerHtml = state.csv.headers.map((header, index) => {
+          const active = state.csvSort.column === index;
+          const indicator = active ? (state.csvSort.direction === "asc" ? "↑" : "↓") : "↕";
+          return `
+            <th class="${columnClass(header)}">
+              <button class="csv-sort" type="button" data-sort-column="${index}">
+                <span>${escapeHtml(header || `列 ${index + 1}`)}</span>
+                <span class="csv-sort-indicator">${indicator}</span>
+              </button>
+            </th>
+          `;
+        }).join("");
+        const filterHtml = state.csv.headers.map((header, index) => `
+          <th class="${columnClass(header)}">
+            <input class="csv-filter" data-filter-column="${index}" value="${escapeHtml(state.csvFilters[index] || "")}" placeholder="筛选">
+          </th>
+        `).join("");
+        const bodyHtml = rows.map((row) => `
+          <tr>
+            ${state.csv.headers.map((header, index) => `
+              <td class="${columnClass(header)}" title="${escapeHtml(row.values[index] || "")}">
+                <span class="csv-cell">${highlight(escapeHtml(row.values[index] || ""), state.query)}</span>
+              </td>
+            `).join("")}
+          </tr>
+        `).join("");
+
+        elements.article.innerHTML = `
+          <div class="csv-view">
+            <div class="csv-toolbar">
+              <span>显示 ${rows.length} / ${state.csv.rows.length} 行</span>
+              <button type="button" data-clear-csv-filters>清除筛选</button>
+            </div>
+            <div class="csv-table-wrap">
+              <table class="csv-table">
+                <thead>
+                  <tr>${headerHtml}</tr>
+                  <tr class="filter-row">${filterHtml}</tr>
+                </thead>
+                <tbody>${bodyHtml}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function filteredFiles() {
+        const query = normalizeText(state.query.trim());
+        return state.files.filter((file) => {
+          if (state.activeCategory !== "all" && file.category !== state.activeCategory) {
+            return false;
+          }
+          if (!query) {
+            return true;
+          }
+          const fields = [
+            file.title,
+            file.shortTitle,
+            file.filename,
+            file.displayDate,
+            file.categoryLabel,
+            file.path,
+          ].map(normalizeText).join(" ");
+          const currentMatch = file.path === state.activePath && normalizeText(state.activeContent).includes(query);
+          return fields.includes(query) || currentMatch;
+        });
+      }
+
+      function categoryCount(categoryId) {
+        const files = state.files;
+        if (categoryId === "all") {
+          return files.length;
+        }
+        return files.filter((file) => file.category === categoryId).length;
+      }
+
+      function renderCategoryTabs() {
+        const module = activeModule();
+        const tabs = module?.categories || [];
+
+        elements.categoryTabs.innerHTML = tabs.map((category) => `
+          <button class="category-tab${category.id === state.activeCategory ? " active" : ""}" type="button" data-category="${escapeHtml(category.id)}">
+            ${escapeHtml(category.label)} ${categoryCount(category.id)}
+          </button>
+        `).join("");
+      }
+
+      function renderList() {
+        const files = filteredFiles();
+        const total = state.files.length;
+        elements.fileCount.textContent = `${files.length} / ${total} 个`;
+        renderModuleTabs();
+        renderCategoryTabs();
+
+        if (!files.length) {
+          elements.fileList.innerHTML = '<div class="empty">没有匹配的文件。</div>';
+          return;
+        }
+
+        const module = activeModule();
+        const categories = module?.categories || [];
+        const grouped = categories
+          .map((category) => ({
+            category,
+            files: files.filter((file) => file.category === category.id),
+          }))
+          .filter((group) => group.files.length);
+
+        elements.fileList.innerHTML = grouped.map((group) => `
+          <section class="category-section">
+            <div class="category-heading">
+              <span>${escapeHtml(group.category.label)}</span>
+              <span>${group.files.length} 个</span>
+            </div>
+            ${group.files.map((file) => `
+            <button class="file-button${file.path === state.activePath ? " active" : ""}" data-path="${escapeHtml(file.path)}" type="button">
+              <span class="file-title">${escapeHtml(file.shortTitle || file.title)}</span>
+              <span class="file-meta">
+                <span class="file-name">${escapeHtml(file.displayDate ? `${file.displayDate} · ${file.filename}` : file.filename)}</span>
+              </span>
+            </button>
+            `).join("")}
+          </section>
+        `).join("");
+      }
+
+      function setStatus(message) {
+        elements.status.textContent = message;
+      }
+
+      async function loadFile(filePath, updateHash = true) {
+        const file = state.files.find((item) => item.path === filePath);
+        if (!file) {
+          return;
+        }
+
+        resetImagePreloads();
+        state.activePath = filePath;
+        state.activeMarkdown = "";
+        state.activeContent = "";
+        state.activeType = file.type || "";
+        state.csv = null;
+        state.csvFilters = {};
+        state.csvSort = { column: null, direction: "asc" };
+        elements.articleScroll.scrollTop = 0;
+        renderList();
+        setStatus("读取中");
+        elements.currentTitle.textContent = file.title;
+        const category = activeModule()?.categories.find((item) => item.id === file.category);
+        elements.currentMeta.textContent = `${activeModule()?.name || "阅读器"} · ${category?.label || file.category} · ${file.displayDate || "资料文件"}`;
+        elements.article.classList.toggle("csv-article", file.type === "csv");
+        elements.article.classList.toggle("html-article", file.type === "html");
+        elements.article.classList.toggle("markdown-body", file.type !== "csv" && file.type !== "html");
+        elements.article.innerHTML = "<p>正在读取正文...</p>";
+
+        if (file.type === "html") {
+          elements.article.innerHTML = `<iframe class="html-preview" src="/api/html?path=${encodeURIComponent(filePath)}" title="${escapeHtml(file.title)}"></iframe>`;
+          setStatus("已加载");
+          if (updateHash) {
+            history.replaceState(null, "", `#${encodeURIComponent(filePath)}`);
+          }
+          renderList();
+          return;
+        }
+
+        const response = await fetch(`/api/file?path=${encodeURIComponent(filePath)}`);
+        if (!response.ok) {
+          throw new Error(`读取失败: ${response.status}`);
+        }
+
+        const payload = await response.json();
+        state.activeContent = payload.content || "";
+        if (file.type === "csv") {
+          state.csv = parseCsv(state.activeContent);
+          renderCsv();
+        } else {
+          state.activeMarkdown = state.activeContent;
+          elements.article.innerHTML = renderMarkdown(state.activeMarkdown, state.query);
+          loadArticleImages();
+        }
+        setStatus("已加载");
+
+        if (updateHash) {
+          history.replaceState(null, "", `#${encodeURIComponent(filePath)}`);
+        }
+        renderList();
+      }
+
+      function moduleForPath(filePath) {
+        if (!filePath) {
+          return "xianzhi";
+        }
+        if (filePath.startsWith("exports/")) {
+          return "raw";
+        }
+        return filePath.startsWith("finance/先知/") ? "xianzhi" : "bloggers";
+      }
+
+      function resetActiveFile() {
+        resetImagePreloads();
+        state.activePath = "";
+        state.activeMarkdown = "";
+        state.activeContent = "";
+        state.activeType = "";
+        state.csv = null;
+        state.csvFilters = {};
+        state.csvSort = { column: null, direction: "asc" };
+      }
+
+      async function getModuleIndex(moduleId) {
+        const cachedIndex = state.moduleIndexes.get(moduleId);
+        if (cachedIndex) {
+          return cachedIndex;
+        }
+
+        const pendingRequest = state.moduleIndexRequests.get(moduleId);
+        if (pendingRequest) {
+          return pendingRequest;
+        }
+
+        const request = fetch(`/api/index?module=${encodeURIComponent(moduleId)}`)
+          .then(async (response) => {
+            if (!response.ok) {
+              throw new Error(`索引读取失败: ${response.status}`);
+            }
+            const payload = await response.json();
+            const resolvedModuleId = payload.module?.id || moduleId;
+            state.moduleIndexes.set(resolvedModuleId, payload);
+            return payload;
+          })
+          .finally(() => {
+            state.moduleIndexRequests.delete(moduleId);
+          });
+
+        state.moduleIndexRequests.set(moduleId, request);
+        return request;
+      }
+
+      function prefetchModuleIndexes() {
+        state.modules
+          .filter((module) => module.id !== state.activeModule && !state.moduleIndexes.has(module.id))
+          .forEach((module) => {
+            getModuleIndex(module.id).catch(() => {
+              // Background warming should not interrupt reading the current module.
+            });
+          });
+      }
+
+      async function loadModule(moduleId, preferredPath = "", updateHash = true) {
+        if (state.moduleIndexes.has(moduleId)) {
+          setStatus("切换中");
+        } else {
+          setStatus("读取索引");
+        }
+        const payload = await getModuleIndex(moduleId);
+        state.files = payload.files || [];
+        state.modules = payload.modules || [];
+        state.activeModule = payload.module?.id || payload.defaultModuleId || state.modules[0]?.id || "";
+        state.categories = activeModule()?.categories || [];
+        const preferredFile = state.files.find((file) => file.path === preferredPath);
+        state.activeCategory = preferredFile?.category || state.categories[0]?.id || "all";
+        renderList();
+
+        const initial = preferredFile || state.files[0];
+        if (initial) {
+          await loadFile(initial.path, updateHash);
+          prefetchModuleIndexes();
+        } else {
+          elements.article.innerHTML = '<p>没有找到 Markdown 文件。</p>';
+          elements.currentTitle.textContent = "没有文件";
+          elements.currentMeta.textContent = activeModule()?.name || "finance";
+          setStatus("空目录");
+        }
+      }
+
+      elements.moduleTabs.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-module]");
+        if (!button || button.dataset.module === state.activeModule) {
+          return;
+        }
+        state.activeCategory = "all";
+        resetActiveFile();
+        loadModule(button.dataset.module).catch((error) => {
+          elements.article.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+          setStatus("读取失败");
+        });
+      });
+
+      elements.categoryTabs.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-category]");
+        if (!button) {
+          return;
+        }
+        state.activeCategory = button.dataset.category || "all";
+        renderList();
+      });
+
+      elements.fileList.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-path]");
+        if (!button) {
+          return;
+        }
+        closeSidebarOnMobile();
+        loadFile(button.dataset.path).catch((error) => {
+          elements.article.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+          setStatus("读取失败");
+        });
+      });
+
+      elements.mobileMenuButton.addEventListener("click", () => {
+        setSidebarOpen(!elements.app.classList.contains("sidebar-open"));
+      });
+
+      elements.sidebarScrim.addEventListener("click", () => {
+        setSidebarOpen(false);
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          if (!elements.imageViewer.hidden) {
+            closeImageViewer();
+          } else {
+            setSidebarOpen(false);
+          }
+        }
+      });
+
+      window.addEventListener("resize", () => {
+        if (!isMobileLayout()) {
+          setSidebarOpen(false);
+        }
+        if (!elements.imageViewer.hidden) {
+          fitImageViewerToScreen();
+        }
+      });
+
+      elements.searchInput.addEventListener("input", (event) => {
+        state.query = event.target.value;
+        renderList();
+        if (state.activeType === "csv") {
+          renderCsv();
+        } else if (state.activeMarkdown) {
+          elements.article.innerHTML = renderMarkdown(state.activeMarkdown, state.query);
+          loadArticleImages();
+        }
+      });
+
+      elements.article.addEventListener("click", (event) => {
+        const imageLink = event.target.closest("a.image-link");
+        if (imageLink && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+          event.preventDefault();
+          const image = imageLink.querySelector("img");
+          openImageViewer(imageLink.href, image?.currentSrc || image?.src || "", image?.alt || "");
+          return;
+        }
+
+        const anchor = event.target.closest("a[href^='#']");
+        if (anchor && state.activeType !== "csv") {
+          const targetId = decodeURIComponent(anchor.getAttribute("href").slice(1));
+          const target = targetId ? document.getElementById(targetId) : null;
+          if (target) {
+            event.preventDefault();
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+          return;
+        }
+
+        const sortButton = event.target.closest("[data-sort-column]");
+        if (sortButton && state.activeType === "csv") {
+          const column = Number.parseInt(sortButton.dataset.sortColumn, 10);
+          if (state.csvSort.column === column) {
+            state.csvSort.direction = state.csvSort.direction === "asc" ? "desc" : "asc";
+          } else {
+            state.csvSort = { column, direction: "asc" };
+          }
+          renderCsv();
+          return;
+        }
+
+        if (event.target.closest("[data-clear-csv-filters]") && state.activeType === "csv") {
+          state.csvFilters = {};
+          state.csvSort = { column: null, direction: "asc" };
+          renderCsv();
+        }
+      });
+
+      elements.imageViewerClose.addEventListener("click", closeImageViewer);
+      elements.imageViewerFit.addEventListener("click", fitImageViewerToScreen);
+      elements.imageViewerActual.addEventListener("click", showImageViewerActualSize);
+      elements.imageViewerZoomIn.addEventListener("click", () => setImageViewerScale(imageViewerState.scale * 1.2));
+      elements.imageViewerZoomOut.addEventListener("click", () => setImageViewerScale(imageViewerState.scale / 1.2));
+
+      elements.imageViewer.addEventListener("click", (event) => {
+        if (imageViewerState.suppressNextClick) {
+          imageViewerState.suppressNextClick = false;
+          event.preventDefault();
+          return;
+        }
+        if (event.target === elements.imageViewerStage) {
+          closeImageViewer();
+        }
+      });
+
+      elements.imageViewerStage.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+        setImageViewerScale(imageViewerState.scale * factor);
+      }, { passive: false });
+
+      elements.imageViewerStage.addEventListener("dblclick", () => {
+        if (Math.abs(imageViewerState.scale - imageViewerState.fitScale) < 0.01) {
+          resetImageViewerTransform(imageViewerState.fitScale < 1 ? 1 : 2);
+        } else {
+          fitImageViewerToScreen();
+        }
+      });
+
+      elements.imageViewerStage.addEventListener("mousedown", (event) => {
+        if (event.button !== 0) {
+          return;
+        }
+        event.preventDefault();
+        imageViewerState.isDragging = true;
+        imageViewerState.dragStartX = event.clientX;
+        imageViewerState.dragStartY = event.clientY;
+        imageViewerState.originX = imageViewerState.x;
+        imageViewerState.originY = imageViewerState.y;
+        elements.imageViewerStage.classList.add("dragging");
+      });
+
+      window.addEventListener("mousemove", (event) => {
+        if (!imageViewerState.isDragging) {
+          return;
+        }
+        imageViewerState.x = imageViewerState.originX + event.clientX - imageViewerState.dragStartX;
+        imageViewerState.y = imageViewerState.originY + event.clientY - imageViewerState.dragStartY;
+        applyImageViewerTransform();
+      });
+
+      window.addEventListener("mouseup", () => {
+        if (!imageViewerState.isDragging) {
+          return;
+        }
+        stopImageViewerDrag();
+      });
+
+      elements.imageViewerStage.addEventListener("touchstart", (event) => {
+        if (elements.imageViewer.hidden) {
+          return;
+        }
+        event.preventDefault();
+        imageViewerState.suppressNextClick = false;
+        imageViewerState.touchMoved = false;
+        imageViewerState.touchStartTarget = event.target;
+        if (event.touches.length === 1) {
+          const touch = event.touches[0];
+          imageViewerState.touchMode = "pan";
+          imageViewerState.isDragging = true;
+          imageViewerState.dragStartX = touch.clientX;
+          imageViewerState.dragStartY = touch.clientY;
+          imageViewerState.originX = imageViewerState.x;
+          imageViewerState.originY = imageViewerState.y;
+          elements.imageViewerStage.classList.add("dragging");
+          return;
+        }
+        if (event.touches.length === 2) {
+          const center = getTouchCenter(event.touches);
+          imageViewerState.touchMode = "pinch";
+          imageViewerState.isDragging = false;
+          imageViewerState.touchStartDistance = getTouchDistance(event.touches);
+          imageViewerState.touchStartScale = imageViewerState.scale;
+          imageViewerState.touchStartCenterX = center.x;
+          imageViewerState.touchStartCenterY = center.y;
+          imageViewerState.originX = imageViewerState.x;
+          imageViewerState.originY = imageViewerState.y;
+          elements.imageViewerStage.classList.add("dragging");
+        }
+      }, { passive: false });
+
+      elements.imageViewerStage.addEventListener("touchmove", (event) => {
+        if (elements.imageViewer.hidden || !imageViewerState.touchMode) {
+          return;
+        }
+        event.preventDefault();
+        imageViewerState.suppressNextClick = true;
+        imageViewerState.touchMoved = true;
+        if (imageViewerState.touchMode === "pan" && event.touches.length === 1) {
+          const touch = event.touches[0];
+          imageViewerState.x = imageViewerState.originX + touch.clientX - imageViewerState.dragStartX;
+          imageViewerState.y = imageViewerState.originY + touch.clientY - imageViewerState.dragStartY;
+          applyImageViewerTransform();
+          return;
+        }
+        if (event.touches.length >= 2) {
+          const distance = getTouchDistance(event.touches);
+          const center = getTouchCenter(event.touches);
+          if (imageViewerState.touchStartDistance > 0) {
+            setImageViewerScale(imageViewerState.touchStartScale * (distance / imageViewerState.touchStartDistance));
+            imageViewerState.x = imageViewerState.originX + center.x - imageViewerState.touchStartCenterX;
+            imageViewerState.y = imageViewerState.originY + center.y - imageViewerState.touchStartCenterY;
+            applyImageViewerTransform();
+          }
+        }
+      }, { passive: false });
+
+      elements.imageViewerStage.addEventListener("touchend", (event) => {
+        event.preventDefault();
+        if (event.touches.length === 1) {
+          const touch = event.touches[0];
+          imageViewerState.touchMode = "pan";
+          imageViewerState.isDragging = true;
+          imageViewerState.dragStartX = touch.clientX;
+          imageViewerState.dragStartY = touch.clientY;
+          imageViewerState.originX = imageViewerState.x;
+          imageViewerState.originY = imageViewerState.y;
+          return;
+        }
+        if (!imageViewerState.touchMoved && imageViewerState.touchStartTarget === elements.imageViewerStage) {
+          closeImageViewer();
+          return;
+        }
+        stopImageViewerDrag();
+      }, { passive: false });
+
+      elements.imageViewerStage.addEventListener("touchcancel", (event) => {
+        event.preventDefault();
+        stopImageViewerDrag();
+        imageViewerState.suppressNextClick = true;
+      }, { passive: false });
+
+      elements.imageViewer.addEventListener("touchmove", (event) => {
+        if (!elements.imageViewer.hidden) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+
+      document.addEventListener("gesturestart", (event) => {
+        if (!elements.imageViewer.hidden) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+
+      document.addEventListener("gesturechange", (event) => {
+        if (!elements.imageViewer.hidden) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+
+      document.addEventListener("gestureend", (event) => {
+        if (!elements.imageViewer.hidden) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+
+      elements.article.addEventListener("input", (event) => {
+        if (!event.target.matches("[data-filter-column]") || state.activeType !== "csv") {
+          return;
+        }
+
+        const input = event.target;
+        const column = Number.parseInt(input.dataset.filterColumn, 10);
+        const selectionStart = input.selectionStart;
+        const selectionEnd = input.selectionEnd;
+        state.csvFilters[column] = input.value;
+        renderCsv();
+        requestAnimationFrame(() => {
+          const nextInput = elements.article.querySelector(`[data-filter-column="${column}"]`);
+          if (nextInput) {
+            nextInput.focus();
+            nextInput.setSelectionRange(selectionStart, selectionEnd);
+          }
+        });
+      });
+
+      window.addEventListener("hashchange", () => {
+        const hashPath = decodeURIComponent(location.hash.replace(/^#/, ""));
+        if (hashPath && hashPath.includes("/") && hashPath !== state.activePath) {
+          const moduleId = moduleForPath(hashPath);
+          if (moduleId === state.activeModule) {
+            loadFile(hashPath, false).catch((error) => {
+              elements.article.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+              setStatus("读取失败");
+            });
+            return;
+          }
+          resetActiveFile();
+          loadModule(moduleId, hashPath, false).catch((error) => {
+            elements.article.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+            setStatus("读取失败");
+          });
+        }
+      });
+
+      const initialPath = decodeURIComponent(location.hash.replace(/^#/, ""));
+      loadModule(moduleForPath(initialPath), initialPath, !initialPath).catch((error) => {
+        elements.fileList.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+        elements.article.innerHTML = "<p>阅读器启动失败，请检查 Node 服务是否正常运行。</p>";
+        setStatus("失败");
+      });
+    </script>
+  </body>
+</html>

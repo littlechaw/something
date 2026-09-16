@@ -1,0 +1,12 @@
+{
+  "name": "something-research-reader",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "reader": "node tools/xianzhi-reader/server.mjs"
+  },
+  "dependencies": {
+    "github-markdown-css": "5.9.0",
+    "markdown-it": "14.3.0"
+  }
+}
